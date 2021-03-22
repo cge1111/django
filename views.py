@@ -1,65 +1,21 @@
-from django.http import HttpResponse
-from .models import Question
-from django.shortcuts import render, get_object_or_404, redirect
-from django.utils import timezone
-from .forms import QuestionForm, AnswerForm
-from django.core.paginator import Paginator
+from django.contrib.auth import authenticate, login
+from django.shortcuts import render, redirect
+from common.forms import UserForm
 
-def index(request):
-    """
-    pybo 목록 출력
-    """
-    # 입력 파라미터
-    page = request.GET.get('page', '1')  # 페이지
-    question_list = Question.objects.order_by('-create_date')
-    # 페이징처리
-    paginator = Paginator(question_list, 10)  # 페이지당 10개씩 보여주기
-    page_obj = paginator.get_page(page)
-    context = {'question_list': page_obj}
 
-    return render(request, 'pybo/question_list.html', context)
-
-def detail(request, question_id):
+def signup(request):
     """
-    pybo 내용 출력
+    계정생성
     """
-    question = get_object_or_404(Question, pk=question_id)
-    context = {'question': question}
-
-    return render(request, 'pybo/question_detail.html', context)
-
-def answer_create(request, question_id):
-    """
-    pybo 답변등록
-    """
-    question = get_object_or_404(Question, pk=question_id)
-    
     if request.method == "POST":
-        form = AnswerForm(request.POST)
+        form = UserForm(request.POST)
         if form.is_valid():
-            answer = form.save(commit=False)
-            answer.create_date = timezone.now()
-            answer.question = question
-            answer.save()
-            return redirect('pybo:detail', question_id=question.id)
+            form.save()
+            username = form.cleaned_data.get('username')
+            raw_password = form.cleaned_data.get('password1')
+            user = authenticate(username=username, password=raw_password)
+            login(request, user)
+            return redirect('index')
     else:
-        form = AnswerForm()
-    context = {'question': question, 'form': form}
-    return render(request, 'pybo/question_detail.html', context)
-    
-
-def question_create(request):
-    """
-    pybo 질문등록
-    """
-    if request.method == 'POST':
-        form = QuestionForm(request.POST)
-        if form.is_valid():
-            question = form.save(commit=False)
-            question.create_date = timezone.now()
-            question.save()
-            return redirect('pybo:index')
-    else:
-        form = QuestionForm()
-    context = {'form': form}
-    return render(request, 'pybo/question_form.html', context)
+        form = UserForm()
+    return render(request, 'common/signup.html', {'form': form})
